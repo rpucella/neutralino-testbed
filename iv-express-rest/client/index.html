@@ -84,13 +84,49 @@
 
   <script>
 
+    class API {
+        async _fetch(url, method, params) {
+            const paramsObj = params || {}
+            const response = await fetch(url, {
+                method,
+                ...paramsObj
+            })
+            const result = await response.json()
+            return result.data
+        }
+
+        async fetchImages() {
+            return this._fetch("/api/images", "get")
+        }
+        
+        async fetchImage(index) {
+            return this._fetch(`/api/image?index=${index}`, "get")
+        }
+        
+        async addImage(url) {
+            return this._fetch("/api/images", "post", {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `url=${encodeURIComponent(url)}`
+            })
+        }
+    }
+
+  </script>
+
+
+  <script>
+
     // State.
     let images = []
     let currentImage = -1
+
+    const api = new API()
     
     const init = async () => { 
         // Load initial images.
-        images = await fetchImages()
+        images = await api.fetchImages()
         images.forEach(createImageEntry)
         if (images.length > 0) {
             await selectImage(0)
@@ -110,7 +146,7 @@
         if (currentImage >= 0) {
             document.getElementById(`image-${currentImage}`).classList.remove("selected")
         }
-        const img = await fetchImage(index)
+        const img = await api.fetchImage(index)
         document.getElementById("image").setAttribute("src", img)
         document.getElementById(`image-${index}`).classList.add("selected")
         currentImage = index
@@ -121,45 +157,17 @@
         document.getElementById("load-input").value = ""
         if (url.trim().length > 0) {
             const newIndex = images.length
-            await postImage(url)
+            await api.addImage(url)
             createImageEntry(url, newIndex)
             images.push(url)
             selectImage(newIndex)
         }
     })
+
+    
                                                             
     document.addEventListener("DOMContentLoaded", init)
     
-  </script>
-
-  <script>
-
-    const fetchImages = async () => {
-        const response = await fetch("/api/images", {
-            method: "get"
-        })
-        const result = await response.json()
-        return result.data
-    }
-
-    const fetchImage = async (index) => {
-        const response = await fetch(`/api/image?index=${index}`, {
-            method: "get"
-        })
-        const result = await response.json()
-        return result.data
-    }
-
-    const postImage = async (url) => {
-        const result = await fetch("/api/images", {
-            method: "post",
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: `url=${encodeURIComponent(url)}`
-        })
-    }
-
   </script>
 
 </body>
