@@ -5,7 +5,7 @@ const port = 8000
 
 const images = []
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json())
 
 class Storage {
     constructor() {
