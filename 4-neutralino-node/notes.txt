@@ -14,4 +14,4 @@ Steps:
 - add extension to config file
 - enables extensions.* in nativeallowlist
 
-
+NOTE that it looks like the extension is a websocket CLIENT: neutralino creates the websocket

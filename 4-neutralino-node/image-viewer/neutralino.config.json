@@ -86,7 +86,7 @@
   "extensions": [
     {
       "id": "imageviewer_backend",
-      "command": "node ${NL_PATH}/server/server.js"
+      "command": "node ${NL_PATH}/backend/backend.js"
     }
   ]
 }

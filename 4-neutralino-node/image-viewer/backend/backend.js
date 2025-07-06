@@ -1,8 +1,7 @@
-//import express from 'express'
-//import expressWS from 'express-ws'
+import { v4 as uuidV4 } from "uuid"
 
-import process from 'process'
-import fs from 'fs'
+import process from "process"
+import fs from "fs"
 const processInput = JSON.parse(fs.readFileSync(process.stdin.fd, 'utf-8'))
 const NL_PORT = processInput.nlPort
 const NL_TOKEN = processInput.nlToken
@@ -93,14 +92,14 @@ client.on('close', (code, reason) => {
   process.exit()
 })
 client.on('message', async (evt) => {
-  console.log("Event = ", evt)
   const evtData = evt.toString('utf-8')
+  console.log("Event = ", evtData)
   const { event, data } = JSON.parse(evtData)
-
   if (event === "eventToExtension") {
     const callId = data.callId
     const result = await processMessage(data)
     client.send(JSON.stringify({
+      id: uuidV4(),
       method: "app.broadcast",
       accessToken: NL_TOKEN,
       data: {
