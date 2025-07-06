@@ -1,0 +1,17 @@
+
+Steps:
+
+- npx @neutralinojs/neu create image-viewer (might take a few shots)
+- cd image-viewer
+- npx @neutralinojs/neu run
+- move frontend to resources
+    - need icons/appIcon.png
+    - need js/neutralino.js
+
+- copy backend to server/
+
+- enableExtensions: true in config file
+- add extension to config file
+- enables extensions.* in nativeallowlist
+
+
