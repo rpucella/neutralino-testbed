@@ -136,7 +136,7 @@
         const ul = document.getElementById("images")
         const elt = document.createElement("div")
         elt.setAttribute("id", `image-${idx}`)
-        elt.addEventListener("click", ((idx) => () => selectImage(idx))(idx))
+        elt.addEventListener("click", () => selectImage(idx))
         elt.innerText = img
         ul.appendChild(elt)
     }    

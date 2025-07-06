@@ -83,38 +83,64 @@
 
   <script>
 
-    class API {
-        async _fetch(url, jsonBody) {
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(jsonBody)
-            })
-            const result = await response.json()
-            return result.data
-        }
+    // RPC over websocket idea from:
+    // https://github.com/small-tech/site.js-websocket-rpc-example/blob/master/readme.md
 
-        async fetchImages() {
-            return this._fetch("/api/message", {
-                "mode": "get-images"
-            })
+    class API {
+      constructor() {
+        const websocket = new WebSocket("/api", "ws")
+        this._websocket = websocket
+        websocket.onerror = (event) => {
+          console.dir(event, {depth:null})
         }
+        this._isReady = new Promise((resolve) => {
+          websocket.onopen = (event) => {
+            resolve(true)
+          }
+        })
+        this._callId = 0
+      }
+
+      async _fetch(_, obj) {
+        await this._isReady
+        const websocket = this._websocket
+        // callId is a unique identifier for the call so that we can catch the response.
+        const callId = this._callId
+        this._callId += 1
+        const response = new Promise((resolve) => {
+          const listener = (event) => {
+            const data = JSON.parse(event.data)
+              if (data.callId === callId) {
+              websocket.removeEventListener('message', listener)
+              resolve(data)
+            }
+          }
+          websocket.addEventListener('message', listener)
+        })
+        websocket.send(JSON.stringify({...obj, callId}))
+        const data = await response
+        return data.content
+      }
+
+      async fetchImages() {
+        return this._fetch("/api/message", {
+           "mode": "get-images"
+        })
+      }
         
-        async fetchImage(index) {
-            return this._fetch(`/api/message`, {
-                "mode": "get-image",
-                "index": index
-            })
-        }
+      async fetchImage(index) {
+        return this._fetch(`/api/message`, {
+          "mode": "get-image",
+          "index": index
+        })
+      }
         
-        async addImage(url) {
-            return this._fetch("/api/message", {
-                "mode": "post-image",
-                "url": url
-            })
-        }
+      async addImage(url) {
+        return this._fetch("/api/message", {
+          "mode": "post-image",
+          "url": url
+        })
+      }
     }
 
   </script>
