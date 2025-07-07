@@ -1,0 +1,44 @@
+
+Steps:
+
+- npx @neutralinojs/neu create image-viewer (might take a few shots)
+- cd image-viewer
+- npx @neutralinojs/neu run
+- move frontend to resources
+    - need icons/appIcon.png
+    - need js/neutralino.js
+
+- copy backend to server/
+
+- enableExtensions: true in config file
+- add extension to config file
+- enables extensions.* in nativeallowlist
+
+***
+
+https://golangbot.com/go-websocket-server/
+
+***
+
+For bundler:
+
+- https://github.com/hschneider/neutralino-build-scripts/tree/master
+- clone to the image_viewer/ root
+- this creates build_scripts
+- copy _app_scaffolds, and all the mac.sh scripts to the root
+- add entry to neutralino.config.js
+- run ./build-mac.sh
+
+What about the extension?
+
+Note that NL_PATH is set to RESOURCES
+
+- so move the extension to the resources folder (in post-process-mac) and switch to ${NL_PATH}/backend for the actual script
+- though I _think_ you need all execs to live in MacOS, so:
+
+    "command": "${NL_PATH}/../MacOS/backend"
+
+and copy to ${APP_MACOS} in post-process
+
+
+
