@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/base64"
+	"github.com/google/uuid"
 	"os"
 	"bufio"
 	"io"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
+	"net/http"
 	// "net/url"
 	"os/signal"
 )
@@ -30,6 +33,14 @@ func main() {
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
+
+	/*
+        const NL_PORT = processInput.nlPort
+        const NL_TOKEN = processInput.nlToken
+        const NL_CTOKEN = processInput.nlConnectToken
+        const NL_EXTID = processInput.nlExtensionId
+        const NL_URL =  `ws://localhost:${NL_PORT}?extensionId=${NL_EXTID}&connectToken=${NL_CTOKEN}`
+    */
 
 	urlString := fmt.Sprintf("ws://localhost:%s?extensionId=%s&connectToken=%s",
 		connInfo["nlPort"],
@@ -57,11 +68,40 @@ func main() {
 				return
 			}
 			log.Printf("recv: %s", message)
-			result, err := processMessage(string(message))
-			log.Println(result)
-			if err != nil {
-				log.Printf("cannot process message:", err)
-				return
+			messageObj := make(map[string]interface{})
+			if err := json.Unmarshal(message, &messageObj); err != nil {
+				log.Println("cannot parse message:", err)
+				continue
+			}
+			eventIfc, ok := messageObj["event"]
+			if !ok {
+				continue
+			}
+			event := eventIfc.(string)
+			if event == "eventToExtension" {
+				data := messageObj["data"].(map[string]interface{})
+				callId := data["callId"].(float64)
+				msgResult, err := processMessage(data)
+				if err != nil {
+					log.Println("cannot process message:", err)
+					continue
+				}
+				result := make(map[string]interface{})
+				result["id"] = uuid.NewString()
+				result["method"] = "app.broadcast"
+				result["accessToken"] = connInfo["nlToken"]
+				dataResult := make(map[string]interface{})
+				data2Result := make(map[string]interface{})
+				dataResult["event"] = "eventFromExtension"
+				data2Result["content"] = msgResult
+				data2Result["callId"] = callId
+				dataResult["data"] = data2Result
+				result["data"] = dataResult
+				obj, err := json.Marshal(result)
+				if err != nil {
+					log.Println("cannot marshal result:", err)
+				}
+				c.WriteMessage(websocket.BinaryMessage, obj)
 			}
 		}
 	}()
@@ -88,136 +128,62 @@ func main() {
 	}
 }
 
-
-func processMessage(message string) (string, error) {
-	log.Println(message)
-	return "", nil
+type image struct {
+	name string
+	content string // Base64 encoding
+	mime string
 }
 
+var images []image = make([]image, 0)
 
-/*
-type connInfo struct {
-	Port string "json:nlPort"
-	Token string "json:nlToken"
-	CToken string "json:nlConnectToken"
-	ExtId string "json:nlExtensionId"
-}
-*/
-
-/*
-const processInput = JSON.parse(fs.readFileSync(process.stdin.fd, 'utf-8'))
-const NL_PORT = processInput.nlPort
-const NL_TOKEN = processInput.nlToken
-const NL_CTOKEN = processInput.nlConnectToken
-const NL_EXTID = processInput.nlExtensionId
-const NL_URL =  `ws://localhost:${NL_PORT}?extensionId=${NL_EXTID}&connectToken=${NL_CTOKEN}`
-*/
-
-
-
-/*
-const images = []
-
-class Storage {
-    constructor() {
-        this.images = []
-    }
-
-    readImage(index) {
-        return this.images[index]
-    }
-
-    readImageNames() {
-        return this.images.map(img => img.name)
-    }
-
-    createImage(name, content, contentType) {
-        this.images.push({
-            name: name,
-            content: content,
-            mime: contentType
-        })
-    }
+func getImageDetails(key int) string {
+	img := images[key]
+	return fmt.Sprintf("data:%s;base64,%s", img.mime, img.content)
 }
 
-
-class Controller {
-    constructor() {
-        this.store = new Storage()
-    }
-
-    getImageDetails(key) {
-        const img = this.store.readImage(key)
-        return `data:${img.mime};base64,${img.content}`
-    }
-
-    getImages() {
-        return this.store.readImageNames()
-    }
-
-    async addImage(url) {
-        const response = await fetch(url)
-        const contentType = response.headers.get('content-type')
-        const abuffer = await response.arrayBuffer()
-        const base64Image = Buffer.from(abuffer).toString('base64')
-        this.store.createImage(url, base64Image, contentType)
-    }
+func getImages() []string {
+	names := make([]string, 0)
+	for _, img := range images {
+		names = append(names, img.name)
+	}
+	return names
 }
 
-const controller = new Controller()
-
-async function processMessage(msg) {
-    switch(msg.mode) {
-    case "get-image":
-        return controller.getImageDetails(msg.index)
-        break
-
-    case "get-images":
-        return controller.getImages()
-        break
-
-    case "post-image":
-        await controller.addImage(msg.url)
-        return "ok"
-    }
-    console.log(`Error - unknown message type ${msg.mode}`)
-    return "unknown message type"
+func addImage(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("cannot fetch image: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request status: %s", resp.StatusCode)
+	}
+	// get content-type
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("cannot read image: %w", err)
+	}
+	base64Str := base64.StdEncoding.EncodeToString(bodyBytes)
+	contentType := resp.Header.Get("content-type")
+	images = append(images, image{url, base64Str, contentType})
+	return nil
 }
 
-*/
+func processMessage(message map[string]interface{}) (interface{}, error) {
+	log.Println("processing message: ", message)
+	mode := message["mode"].(string)
+	switch(mode) {
+	case "get-images":
+		return getImages(), nil
 
-/*
+	case "get-image":
+		index := message["index"].(float64)
+		return getImageDetails(int(index)), nil
 
-import WebSocket from 'ws'
-
-const client = new WebSocket(NL_URL)
-
-client.on('error', (error) => {
-    console.log(`Connection error!`)
-    console.dir(error, {depth:null})
-})
-client.on('open', () => console.log("Connected"))
-client.on('close', (code, reason) => {
-  console.log(`WebSocket closed: ${code} - ${reason}`);
-  process.exit()
-})
-client.on('message', async (evt) => {
-  console.log("Event = ", evt)
-  const evtData = evt.toString('utf-8')
-  const { event, data } = JSON.parse(evtData)
-
-  if (event === "eventToExtension") {
-    const callId = data.callId
-    const result = await processMessage(data)
-    client.send(JSON.stringify({
-      method: "app.broadcast",
-      accessToken: NL_TOKEN,
-      data: {
-        event: "eventFromExtension",
-        data: {content: result, callId}
-      }
-    }))
- }
-})
-
-*/
+	case "post-image":
+		url := message["url"].(string)
+		err := addImage(url)
+		return "ok", err
+	}
+	return nil, fmt.Errorf("Unknown mode: %s", mode)
+}
