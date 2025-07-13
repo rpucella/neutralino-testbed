@@ -2,7 +2,6 @@ import express from 'express'
 import expressWS from 'express-ws'
 
 const app = express()
-expressWS(app)
 const port = 8000
 
 const images = []
@@ -76,7 +75,9 @@ async function processMessage(msg) {
 
 // Routes.
 
-app.ws('/api', async (ws, req) => {
+expressWS(app)
+
+app.ws('/api/ws', async (ws, req) => {
   ws.on('message', async (msg) => {
     ///console.log('received', msg)
     const obj = JSON.parse(msg)

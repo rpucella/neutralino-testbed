@@ -88,7 +88,7 @@
 
     class API {
       constructor() {
-        const websocket = new WebSocket("/api", "ws")
+        const websocket = new WebSocket("/api/ws", "ws")
         this._websocket = websocket
         websocket.onerror = (event) => {
           console.dir(event, {depth:null})
