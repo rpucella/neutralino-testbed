@@ -1,8 +1,7 @@
 # Developer tools' files
 .lite_workspace.lua
 
-# Neutralinojs binaries and builds
-/bin
+# Neutralinojs builds
 /dist
 
 # Neutralinojs client (minified)

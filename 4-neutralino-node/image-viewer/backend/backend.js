@@ -2,7 +2,8 @@ import { v4 as uuidV4 } from "uuid"
 
 import process from "process"
 import fs from "fs"
-const processInput = JSON.parse(fs.readFileSync(process.stdin.fd, 'utf-8'))
+const input = fs.readFileSync(process.stdin.fd, 'utf-8')
+const processInput = JSON.parse(input)
 const NL_PORT = processInput.nlPort
 const NL_TOKEN = processInput.nlToken
 const NL_CTOKEN = processInput.nlConnectToken
